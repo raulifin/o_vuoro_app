@@ -1,0 +1,13 @@
+{
+  "name": "O-vuoro Work Time",
+  "short_name": "O-vuoro",
+  "description": "Offline work-time tracking",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4efe6",
+  "theme_color": "#315b4d",
+  "icons": [
+    { "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
