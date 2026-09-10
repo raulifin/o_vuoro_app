@@ -4,6 +4,7 @@ import {
   calculateTotalWorkedMinutes,
   calculateWorkedMinutes,
   formatDuration,
+  formatTime,
   parseTime,
 } from './time';
 
@@ -24,6 +25,7 @@ describe('work-time calculations', () => {
 
   it('calculates the planned end', () => {
     expect(calculatePlannedEnd('07:26', 465)).toBe('15:11');
+    expect(formatTime(465)).toBe('07:45');
   });
 
   it('adds multiple work periods before applying the daily target', () => {

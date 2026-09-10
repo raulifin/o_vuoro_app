@@ -4,6 +4,7 @@ import {
   calculateTotalWorkedMinutes,
   DEFAULT_EXPECTED_MINUTES,
   formatDuration,
+  formatTime,
   parseTime,
 } from './domain/time';
 import { deleteEntry, getEntriesForDate, getSettings, listEntries, saveEntry, saveSettings, type AppSettings, type WorkEntry } from './storage/db';
@@ -32,6 +33,10 @@ function isValidDateKey(value: string): boolean {
   const [year, month, day] = value.split('-').map(Number);
   const date = new Date(Date.UTC(year, month - 1, day));
   return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[character] ?? character);
 }
 
 function formatToday(): string {
@@ -89,9 +94,9 @@ function render(): void {
   const active = Boolean(activeEntry);
   const completed = completedEntries.length > 0;
   const worked = calculateTotalWorkedMinutes(completedEntries);
-  const expectedMinutes = settings.standardExpectedMinutes;
+  const expectedMinutes = todayEntries[0]?.expectedMinutes ?? settings.standardExpectedMinutes;
   const balance = worked - expectedMinutes;
-  const periods = todayEntries.map((entry) => `<button class="period-row" data-entry-id="${entry.id}"><span>${entry.startTime} - ${entry.endTime || 'active'}</span><strong>${entry.endTime ? formatDuration(calculateWorkedMinutes(entry.startTime, entry.endTime)) : 'Edit'}</strong></button>`).join('');
+  const periods = todayEntries.map((entry) => `<button class="period-row" data-entry-id="${entry.id}"><span><span>${entry.startTime} - ${entry.endTime || 'active'}</span>${entry.note ? `<small>${escapeHtml(entry.note)}</small>` : ''}</span><strong>${entry.endTime ? formatDuration(calculateWorkedMinutes(entry.startTime, entry.endTime)) : 'Edit'}</strong></button>`).join('');
 
   appRoot.innerHTML = `
     <main class="shell">
@@ -151,7 +156,7 @@ function render(): void {
         date: getTodayKey(),
         startTime: currentTime(),
         endTime: '',
-        expectedMinutes: settings.standardExpectedMinutes,
+        expectedMinutes: todayEntries[0]?.expectedMinutes ?? settings.standardExpectedMinutes,
         note: '',
         createdAt: timestamp,
         updatedAt: timestamp,
@@ -177,7 +182,7 @@ function render(): void {
 }
 
 function renderEditForm(entry: WorkEntry, returnView: 'today' | 'history'): void {
-  appRoot.innerHTML = `<main class="shell"><header class="topbar"><div><p class="eyebrow">O-vuoro</p><h1>Edit entry</h1></div><button class="icon-button" id="cancel-edit" aria-label="Cancel editing">×</button></header><form class="today-card settings-card" id="edit-form"><label for="edit-date">Date</label><input id="edit-date" type="date" value="${entry.date}" required /><label>Start time</label>${timePicker('edit-start', entry.startTime)}<label>End time</label>${timePicker('edit-end', entry.endTime, true)}<p class="field-help">24-hour time. Leave the end time empty while active.</p><p class="save-message error-message" id="edit-error" aria-live="polite"></p><button class="primary-button" type="submit">Save changes</button><button class="danger-button" id="delete-entry" type="button">Delete entry</button></form></main>`;
+  appRoot.innerHTML = `<main class="shell"><header class="topbar"><div><p class="eyebrow">O-vuoro</p><h1>Edit entry</h1></div><button class="icon-button" id="cancel-edit" aria-label="Cancel editing">×</button></header><form class="today-card settings-card" id="edit-form"><label for="edit-date">Date</label><input id="edit-date" type="date" value="${entry.date}" required /><label>Start time</label>${timePicker('edit-start', entry.startTime)}<label>End time</label>${timePicker('edit-end', entry.endTime, true)}<label>Expected day duration</label>${timePicker('edit-expected', formatTime(entry.expectedMinutes))}<label for="edit-note">Note</label><textarea id="edit-note" rows="4" maxlength="500" placeholder="Optional note">${escapeHtml(entry.note ?? '')}</textarea><p class="field-help">Leave the end time empty while active. This duration applies to the whole day.</p><p class="save-message error-message" id="edit-error" aria-live="polite"></p><button class="primary-button" type="submit">Save changes</button><button class="danger-button" id="delete-entry" type="button">Delete entry</button></form></main>`;
   document.querySelector<HTMLButtonElement>('#cancel-edit')?.addEventListener('click', () => { currentView = returnView; render(); });
   document.querySelector<HTMLButtonElement>('#delete-entry')?.addEventListener('click', async () => {
     if (!window.confirm(`Delete the entry from ${entry.date}?`)) return;
@@ -190,14 +195,23 @@ function renderEditForm(entry: WorkEntry, returnView: 'today' | 'history'): void
     event.preventDefault();
     const error = document.querySelector<HTMLParagraphElement>('#edit-error');
     const dateInput = document.querySelector<HTMLInputElement>('#edit-date');
-    if (!error || !dateInput) return;
+    const expectedInput = document.querySelector<HTMLSelectElement>('#edit-expected-hours');
+    const noteInput = document.querySelector<HTMLTextAreaElement>('#edit-note');
+    if (!error || !dateInput || !expectedInput || !noteInput) return;
     try {
       if (!isValidDateKey(dateInput.value)) throw new Error('Enter a valid date.');
       const startTime = readTimePicker('edit-start');
       const endTime = readTimePicker('edit-end', true);
+      const expectedTime = readTimePicker('edit-expected');
       parseTime(startTime);
       if (endTime) parseTime(endTime);
-      await saveEntry({ ...entry, date: dateInput.value, startTime, endTime, updatedAt: new Date().toISOString() });
+      const expectedMinutes = parseTime(expectedTime);
+      const updatedAt = new Date().toISOString();
+      if (dateInput.value === entry.date) {
+        const sameDayEntries = await getEntriesForDate(entry.date);
+        await Promise.all(sameDayEntries.filter((dayEntry) => dayEntry.id !== entry.id).map((dayEntry) => saveEntry({ ...dayEntry, expectedMinutes, updatedAt })));
+      }
+      await saveEntry({ ...entry, date: dateInput.value, startTime, endTime, expectedMinutes, note: noteInput.value.trim(), updatedAt });
       currentView = returnView;
       todayEntries = await getEntriesForDate(getTodayKey());
       render();
@@ -215,10 +229,11 @@ async function renderHistory(): Promise<void> {
   const rows = [...grouped.entries()].sort(([left], [right]) => right.localeCompare(left)).map(([date, dayEntries]) => {
     const completedEntries = dayEntries.filter((entry) => entry.startTime && entry.endTime);
     const worked = calculateTotalWorkedMinutes(completedEntries);
-    const balance = completedEntries.length ? worked - settings.standardExpectedMinutes : 0;
+    const expectedMinutes = dayEntries[0]?.expectedMinutes ?? settings.standardExpectedMinutes;
+    const balance = completedEntries.length ? worked - expectedMinutes : 0;
     cumulative += balance;
-    const periods = dayEntries.map((entry) => `<button class="history-period" data-entry-id="${entry.id}">${entry.startTime || '--:--'} - ${entry.endTime || 'active'}</button>`).join('');
-    return `<article class="history-day"><div class="history-row"><div><strong>${date}</strong><span>${dayEntries.length} period${dayEntries.length === 1 ? '' : 's'} · Worked ${formatDuration(worked)} · Expected ${formatDuration(settings.standardExpectedMinutes)}</span></div><strong class="history-balance ${balance < 0 ? 'negative' : ''}">${completedEntries.length ? formatDuration(balance, true) : 'Active'}</strong></div><div class="history-periods">${periods}</div></article>`;
+    const periods = dayEntries.map((entry) => `<button class="history-period" data-entry-id="${entry.id}"><span>${entry.startTime || '--:--'} - ${entry.endTime || 'active'}</span>${entry.note ? `<small>${escapeHtml(entry.note)}</small>` : ''}</button>`).join('');
+    return `<article class="history-day"><div class="history-row"><div><strong>${date}</strong><span>${dayEntries.length} period${dayEntries.length === 1 ? '' : 's'} · Worked ${formatDuration(worked)} · Expected ${formatDuration(expectedMinutes)}</span></div><strong class="history-balance ${balance < 0 ? 'negative' : ''}">${completedEntries.length ? formatDuration(balance, true) : 'Active'}</strong></div><div class="history-periods">${periods}</div></article>`;
   }).join('');
 
   appRoot.innerHTML = `<main class="shell"><header class="topbar"><div><p class="eyebrow">O-vuoro</p><h1>History</h1></div><button class="icon-button" id="back-today" aria-label="Back to today">×</button></header><section class="balance-panel"><p class="eyebrow">Current balance</p><strong>${formatDuration(cumulative, true)}</strong><span>${grouped.size} recorded day${grouped.size === 1 ? '' : 's'}</span></section><section class="history-list">${rows || '<p class="empty-state">No entries recorded yet.</p>'}</section><nav class="bottom-nav" aria-label="Main navigation"><button class="nav-item" id="today-nav"><span>Today</span><small>Daily entry</small></button><button class="nav-item active"><span>History</span><small>Past days</small></button><button class="nav-item" id="settings-nav"><span>Settings</span><small>Preferences</small></button></nav></main>`;
@@ -236,7 +251,7 @@ async function renderHistory(): Promise<void> {
 function renderSettings(): void {
   const hours = Math.floor(settings.standardExpectedMinutes / 60).toString().padStart(2, '0');
   const minutes = (settings.standardExpectedMinutes % 60).toString().padStart(2, '0');
-  appRoot.innerHTML = `<main class="shell"><header class="topbar"><div><p class="eyebrow">O-vuoro</p><h1>Settings</h1></div><button class="icon-button" id="back-today" aria-label="Back to today">×</button></header><section class="today-card settings-card"><label>Standard daily work time</label><p class="field-help">Choose a 24-hour time, for example 07:45.</p>${timePicker('standard-duration', `${hours}:${minutes}`)}<button class="primary-button" id="save-settings">Save settings</button><p class="save-message" id="save-message" aria-live="polite"></p></section><section class="today-card settings-card"><label>Backup</label><p class="field-help">Export or restore entries stored on this device.</p><button class="secondary-button" id="export-json">Export JSON</button><button class="secondary-button" id="export-csv">Export CSV</button><input id="import-json" type="file" accept="application/json,.json" /><p class="save-message" id="backup-message" aria-live="polite"></p></section><nav class="bottom-nav" aria-label="Main navigation"><button class="nav-item" id="today-nav"><span>Today</span><small>Daily entry</small></button><button class="nav-item" id="history-nav"><span>History</span><small>Past days</small></button><button class="nav-item active"><span>Settings</span><small>Preferences</small></button></nav></main>`;
+  appRoot.innerHTML = `<main class="shell"><header class="topbar"><div><p class="eyebrow">O-vuoro</p><h1>Settings</h1></div><button class="icon-button" id="back-today" aria-label="Back to today">×</button></header><section class="today-card settings-card"><label>Default day duration</label><p class="field-help">Used for new entries. Individual days can override it when edited.</p>${timePicker('standard-duration', `${hours}:${minutes}`)}<button class="primary-button" id="save-settings">Save settings</button><p class="save-message" id="save-message" aria-live="polite"></p></section><section class="today-card settings-card"><label>Backup</label><p class="field-help">Export or restore entries stored on this device.</p><button class="secondary-button" id="export-json">Export JSON</button><button class="secondary-button" id="export-csv">Export CSV</button><input id="import-json" type="file" accept="application/json,.json" /><p class="save-message" id="backup-message" aria-live="polite"></p></section><nav class="bottom-nav" aria-label="Main navigation"><button class="nav-item" id="today-nav"><span>Today</span><small>Daily entry</small></button><button class="nav-item" id="history-nav"><span>History</span><small>Past days</small></button><button class="nav-item active"><span>Settings</span><small>Preferences</small></button></nav></main>`;
   document.querySelector<HTMLButtonElement>('#back-today')?.addEventListener('click', () => { currentView = 'today'; render(); });
   document.querySelector<HTMLButtonElement>('#today-nav')?.addEventListener('click', () => { currentView = 'today'; render(); });
   document.querySelector<HTMLButtonElement>('#history-nav')?.addEventListener('click', () => { currentView = 'history'; render(); });

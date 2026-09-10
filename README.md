@@ -14,6 +14,12 @@ Open <http://localhost:5173>. Source files are mounted into the container and Vi
 
 The dependency directory is stored in the Docker volume `o_vuoro_app_node_modules`, not in the workspace.
 
+## Usage
+
+The default expected work duration is configurable in **Settings** and is used for new entries. Each day can override that duration when editing an entry; the day balance and exports use the stored day-specific value. Multiple work periods on the same day share the day's expected duration.
+
+Entries can also include an optional note, which is shown in Today and History and included in backups and CSV exports.
+
 ## Checks
 
 Run tests inside the container:
@@ -32,7 +38,7 @@ docker compose run --rm app npm run build
 
 To test from an Android phone on the same network, use the computer's local network address instead of `localhost`, for example `http://192.168.1.20:5173`. The computer firewall must allow TCP port 5173.
 
-The app includes Today, multiple work periods per day, history, IndexedDB persistence, date/time editing, deletion, backup/restore, and PWA installation metadata.
+The app includes Today, multiple work periods per day, configurable default and per-day expected durations, notes, history, IndexedDB persistence, date/time editing, deletion, backup/restore, and PWA installation metadata.
 
 ## GitHub Pages installation
 

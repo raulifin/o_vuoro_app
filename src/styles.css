@@ -26,7 +26,8 @@ h2 { max-width: 360px; margin-bottom: 0; font-size: clamp(1.6rem, 6vw, 2.3rem); 
 .history-day { display: grid; gap: 2px; }
 .history-row { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 16px; padding: 17px 18px; border: 1px solid #d9d0c1; border-radius: 4px; background: #fffaf1cc; color: #2c2924; text-align: left; }
 .history-periods { display: grid; gap: 6px; padding: 0 8px 8px; }
-.history-period { padding: 8px 10px; border: 0; background: transparent; color: #315b4d; font: 0.8rem system-ui, sans-serif; text-align: left; }
+.history-period { display: grid; gap: 3px; padding: 8px 10px; border: 0; background: transparent; color: #315b4d; font: 0.8rem system-ui, sans-serif; text-align: left; }
+.history-period small, .period-row small { display: block; overflow: hidden; color: #81796e; font: 0.78rem system-ui, sans-serif; text-overflow: ellipsis; white-space: nowrap; }
 .history-row div { display: grid; gap: 5px; }
 .history-row span, .field-help, .save-message, .empty-state { color: #81796e; font: 0.82rem system-ui, sans-serif; }
 .history-balance { color: #315b4d; font-size: 1.1rem; font-weight: 400; }
@@ -35,6 +36,7 @@ h2 { max-width: 360px; margin-bottom: 0; font-size: clamp(1.6rem, 6vw, 2.3rem); 
 .settings-card label { font-size: 1.25rem; }
 .settings-card .field-help { margin: 0 0 8px; }
 .settings-card input { width: 100%; padding: 13px; border: 1px solid #cfc4b3; border-radius: 3px; background: #fffdf8; color: #2c2924; font: 1.2rem system-ui, sans-serif; }
+.settings-card textarea { width: 100%; resize: vertical; padding: 13px; border: 1px solid #cfc4b3; border-radius: 3px; background: #fffdf8; color: #2c2924; font: 1rem/1.4 system-ui, sans-serif; }
 .clock-input { font-variant-numeric: tabular-nums; letter-spacing: 0.06em; }
 .time-picker { display: flex; align-items: center; gap: 8px; }
 .time-picker select { min-width: 76px; padding: 13px 10px; border: 1px solid #cfc4b3; border-radius: 3px; background: #fffdf8; color: #2c2924; font: 1.2rem system-ui, sans-serif; font-variant-numeric: tabular-nums; }

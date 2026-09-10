@@ -29,10 +29,11 @@ export async function exportCsv(): Promise<void> {
   entries.forEach((entry) => grouped.set(entry.date, [...(grouped.get(entry.date) ?? []), entry]));
   const rows = [...grouped.entries()].flatMap(([date, dayEntries]) => {
     const workedForDay = calculateTotalWorkedMinutes(dayEntries.filter((entry) => entry.startTime && entry.endTime));
+    const expectedMinutes = dayEntries[0]?.expectedMinutes ?? settings.standardExpectedMinutes;
     return dayEntries.map((entry, index) => {
       const worked = entry.startTime && entry.endTime ? calculateWorkedMinutes(entry.startTime, entry.endTime) : undefined;
-      const expected = index === 0 ? formatDuration(settings.standardExpectedMinutes) : '';
-      const balance = index === 0 && dayEntries.some((dayEntry) => dayEntry.startTime && dayEntry.endTime) ? formatDuration(workedForDay - settings.standardExpectedMinutes, true) : '';
+      const expected = index === 0 ? formatDuration(expectedMinutes) : '';
+      const balance = index === 0 && dayEntries.some((dayEntry) => dayEntry.startTime && dayEntry.endTime) ? formatDuration(workedForDay - expectedMinutes, true) : '';
       return [date, entry.startTime, entry.endTime, worked === undefined ? '' : formatDuration(worked), expected, balance, entry.note].map(csvValue).join(',');
     });
   });
