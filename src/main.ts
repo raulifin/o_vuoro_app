@@ -1,5 +1,6 @@
 import './styles.css';
 import {
+  calculateExpectedMinutesForDay,
   calculateWorkedMinutes,
   calculateTotalWorkedMinutes,
   DEFAULT_EXPECTED_MINUTES,
@@ -94,7 +95,7 @@ function render(): void {
   const active = Boolean(activeEntry);
   const completed = completedEntries.length > 0;
   const worked = calculateTotalWorkedMinutes(completedEntries);
-  const expectedMinutes = todayEntries[0]?.expectedMinutes ?? settings.standardExpectedMinutes;
+  const expectedMinutes = calculateExpectedMinutesForDay(todayEntries, settings.standardExpectedMinutes);
   const balance = worked - expectedMinutes;
   const periods = todayEntries.map((entry) => `<button class="period-row" data-entry-id="${entry.id}"><span><span>${entry.startTime} - ${entry.endTime || 'active'}</span>${entry.note ? `<small>${escapeHtml(entry.note)}</small>` : ''}</span><strong>${entry.endTime ? formatDuration(calculateWorkedMinutes(entry.startTime, entry.endTime)) : 'Edit'}</strong></button>`).join('');
 
@@ -156,7 +157,7 @@ function render(): void {
         date: getTodayKey(),
         startTime: currentTime(),
         endTime: '',
-        expectedMinutes: todayEntries[0]?.expectedMinutes ?? settings.standardExpectedMinutes,
+        expectedMinutes: calculateExpectedMinutesForDay(todayEntries, settings.standardExpectedMinutes),
         note: '',
         createdAt: timestamp,
         updatedAt: timestamp,
@@ -229,7 +230,7 @@ async function renderHistory(): Promise<void> {
   const rows = [...grouped.entries()].sort(([left], [right]) => right.localeCompare(left)).map(([date, dayEntries]) => {
     const completedEntries = dayEntries.filter((entry) => entry.startTime && entry.endTime);
     const worked = calculateTotalWorkedMinutes(completedEntries);
-    const expectedMinutes = dayEntries[0]?.expectedMinutes ?? settings.standardExpectedMinutes;
+    const expectedMinutes = calculateExpectedMinutesForDay(dayEntries, settings.standardExpectedMinutes);
     const balance = completedEntries.length ? worked - expectedMinutes : 0;
     cumulative += balance;
     const periods = dayEntries.map((entry) => `<button class="history-period" data-entry-id="${entry.id}"><span>${entry.startTime || '--:--'} - ${entry.endTime || 'active'}</span>${entry.note ? `<small>${escapeHtml(entry.note)}</small>` : ''}</button>`).join('');

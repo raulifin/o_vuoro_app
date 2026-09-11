@@ -41,3 +41,11 @@ export function formatDuration(minutes: number, signed = false): string {
 export function calculateTotalWorkedMinutes(periods: readonly { startTime: string; endTime: string }[]): number {
   return periods.reduce((total, period) => total + calculateWorkedMinutes(period.startTime, period.endTime), 0);
 }
+
+// Multi-entry days store the day's expected duration on every entry (edit form keeps them in sync) or on only
+// one entry with the rest at 0 (legacy/imported data). Taking the maximum avoids depending on entry order
+// (which IndexedDB does not guarantee) and avoids double-counting the expected duration either way.
+export function calculateExpectedMinutesForDay(entries: readonly { expectedMinutes: number }[], fallback: number): number {
+  if (entries.length === 0) return fallback;
+  return Math.max(...entries.map((entry) => entry.expectedMinutes));
+}

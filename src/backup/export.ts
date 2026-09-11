@@ -1,5 +1,5 @@
 import { listEntries, getSettings } from '../storage/db';
-import { calculateWorkedMinutes, calculateTotalWorkedMinutes, formatDuration } from '../domain/time';
+import { calculateExpectedMinutesForDay, calculateWorkedMinutes, calculateTotalWorkedMinutes, formatDuration } from '../domain/time';
 
 function download(content: string, filename: string, type: string): void {
   const url = URL.createObjectURL(new Blob([content], { type }));
@@ -29,7 +29,7 @@ export async function exportCsv(): Promise<void> {
   entries.forEach((entry) => grouped.set(entry.date, [...(grouped.get(entry.date) ?? []), entry]));
   const rows = [...grouped.entries()].flatMap(([date, dayEntries]) => {
     const workedForDay = calculateTotalWorkedMinutes(dayEntries.filter((entry) => entry.startTime && entry.endTime));
-    const expectedMinutes = dayEntries[0]?.expectedMinutes ?? settings.standardExpectedMinutes;
+    const expectedMinutes = calculateExpectedMinutesForDay(dayEntries, settings.standardExpectedMinutes);
     return dayEntries.map((entry, index) => {
       const worked = entry.startTime && entry.endTime ? calculateWorkedMinutes(entry.startTime, entry.endTime) : undefined;
       const expected = index === 0 ? formatDuration(expectedMinutes) : '';
