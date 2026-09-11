@@ -2,6 +2,8 @@
 
 Repository: <https://github.com/raulifin/o_vuoro_app>
 
+[![Build and deploy PWA](https://github.com/raulifin/o_vuoro_app/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/raulifin/o_vuoro_app/actions/workflows/deploy-pages.yml)
+
 Mobile-first work-time tracking app. Development runs entirely in Docker; Node.js and npm are not required on the host computer.
 
 ## Development
