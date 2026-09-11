@@ -1,5 +1,7 @@
 # O-vuoro work-time PWA
 
+Repository: <https://github.com/raulifin/o_vuoro_app>
+
 Mobile-first work-time tracking app. Development runs entirely in Docker; Node.js and npm are not required on the host computer.
 
 ## Development
