@@ -42,6 +42,8 @@ The app includes Today, multiple work periods per day, configurable default and 
 
 ## GitHub Pages installation
 
+The live app is published at <https://raulifin.github.io/o_vuoro_app/>.
+
 Create an empty GitHub repository, push this project to its `main` branch, then enable **Settings -> Pages -> GitHub Actions**. The included workflow builds the app inside Docker and publishes it over HTTPS. The repository name is used automatically as the Vite base path.
 
 From this project directory, after creating the repository, run:
